@@ -9,3 +9,7 @@ Bang
 # 1D-Inviscid-Nozzle_Flow
 
 Boom
+
+# 1D-Wave-Equation
+
+Pow
