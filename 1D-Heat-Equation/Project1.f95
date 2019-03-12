@@ -209,19 +209,12 @@ program plotting
 contains
 
     ! Determine the boundary conditions at the maxS
-    function TmaxS(scheme,tt) result(mt)
+    function TmaxS(scheme,t) result(mt)
 
         character (len = 3), intent(in) :: scheme   ! Input = define which scheme to use
         real :: t                                   ! Temp = used to setup the optional parameter tt
-        real, optional :: tt                        ! Input (optional) = the current time
         real :: mt                                  ! Output = the temperature at the max x-bound
         real(16), parameter :: PI = 4*atan(1.0_16)  ! Constant = pi ~= 3.14159...
-
-        t = 0
-        if (present(tt)) then
-            t = tt
-        end if
-        !print*,t
 
         if (scheme == "12") then
             mt = 1+sin(PI*t)
