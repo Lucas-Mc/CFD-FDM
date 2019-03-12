@@ -22,22 +22,22 @@ program plotting
     real, parameter :: minT = 0.0                   ! Time start point
     real, parameter :: maxT = 1.5                   ! Time end point
     real, parameter :: h = 0.025                    ! Space step
-    real, parameter :: k = 0.00025                 ! Time step
+    real, parameter :: k = 0.00025                 	! Time step
     real, parameter :: TminS = 5.0                  ! T(x at left bound)
     integer, parameter :: tmax = (maxT-minT)/k      ! Number of time steps
     integer, parameter :: smax = ((maxS-minS)/h)-1  ! Number of space steps (nodes)
 
-    ! Define all of the input variables
-    real :: r                       ! Find the stability of the scheme
+    ! Define all of the input and output variables
+    real :: r                       ! Find the stability of the scheme... also known as the CFL number
     real :: t                       ! The value of the current time step
     real :: Res                     ! TVD R-K variable
     real :: Res1                    ! TVD R-K variable
     real :: Res_mat(0:smax+1)       ! TVD R-K variable
     real :: u_1                     ! TVD R-K variable
-    real :: FD_mat(0:smax+1)        ! Array of final spatial values
-    real :: FD_mat500(0:smax+1)     ! Array of final spatial values
-    real :: FD_mat1500(0:smax+1)    ! Array of final spatial values
-    real :: S_mat(0:smax+1)         ! Array of temp spatial values
+    real :: FD_mat(0:smax+1)        ! Array of final temperature values
+    real :: FD_mat500(0:smax+1)     ! Array of temperature values at t = 0.5
+    real :: FD_mat1500(0:smax+1)    ! Array of temperature values at t = 1.0
+    real :: S_mat(0:smax+1)         ! Array of temporary spatial values
     real :: x_mat(0:smax+1)         ! Array of x values
     real, dimension (smax,3) :: At  ! Array of temp values for Backward Euler method (Al=B)
     real, dimension (smax,1) :: Bt  ! Array of temp values for Backward Euler method (Al=B)
@@ -74,9 +74,8 @@ program plotting
     x_mat(smax+1) = maxS
     do i = 0,smax+1
         Res_mat(i) = S_mat(i)
-        print*,Res_mat(i)
+        !print*,Res_mat(i)
     end do
-    !Res1 = S_mat(2)-2*S_mat(1)+S_mat(0)
 
 
     ! Move through time and update spatial components
@@ -141,7 +140,6 @@ program plotting
                 d(smax) = d(smax) + r*TmaxS(scheme,t_val)/2
             end if
 
-
             call TRIDI(smax,a,b,c,d)
 
             do j = 1,smax
@@ -150,7 +148,7 @@ program plotting
 
             FD_mat(0) = TminS
             if (scheme == "13") then
-                FD_mat(smax+1) = FD_mat(smax)!TmaxS(scheme,t_val)
+                FD_mat(smax+1) = FD_mat(smax)
             else
                 FD_mat(smax+1) = TmaxS(scheme,t_val)
             end if
@@ -171,6 +169,7 @@ program plotting
                     FD_mat(j) = r*S_mat(j-1)+(1-(2*r))*S_mat(j)+r*S_mat(j+1)+k*S(scheme,x_mat(j))
                 end if
             end do
+			
             FD_mat(0) = TminS
             if (scheme == "13") then
                 FD_mat(smax+1) = FD_mat(smax)
@@ -192,6 +191,7 @@ program plotting
 
     end do
 
+	! Export the corresponding data to a '.dat' file for future plotting
     open(unit=48, file='Project1_22.dat')
     do i = 0,smax+1
         current_val = x_mat(i)
@@ -199,8 +199,10 @@ program plotting
         write(48,*) current_val,F(scheme,current_val),FD_mat500(i),FD_mat1500(i),FD_mat(i)
     end do
     close(48)
+	! I am plotting with Gnuplot so this calls that program for plotting... must have the file named that for it to work
     call system('gnuplot -p Project1_FDM.plt')
 
+	! Sanity check to see if everything is working right through resolution and stability
     print*,"Time steps: ",tmax,"Space steps: ",smax
     print*,"Stability is: ",r
 
@@ -224,7 +226,7 @@ contains
 
     end function
 
-    ! Initial function at t=0
+    ! Initial function at t = 0
     function F(scheme,x) result(y)
 
         character (len = 3), intent(in) :: scheme   ! Input = define which scheme to use
@@ -239,7 +241,7 @@ contains
 
     end function F
 
-    ! Forcing function
+    ! Forcing / source function
     function S(scheme,x) result(v)
 
         character (len = 3), intent(in) :: scheme   ! Input = define which scheme to use
@@ -258,6 +260,7 @@ contains
 
     end function S
 
+	! Solve the tridiagonal matrix through this clever technique
     subroutine TRIDI(N,A,B,C,D)
 
         implicit none
@@ -279,6 +282,7 @@ contains
         end do
 
     return
+	
     end
 
 end program plotting
