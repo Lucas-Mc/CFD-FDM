@@ -16,21 +16,28 @@ program plotting
     real, parameter :: maxT = 2.0                   ! Time end point
     real, parameter :: h = 0.025                    ! Space step
     real, parameter :: k = 0.00025                 	! Time step
-    real, parameter :: TminS = 5.0                  ! T(x at left bound)
     integer, parameter :: tmax = (maxT-minT)/k      ! Number of time steps
     integer, parameter :: smax = ((maxS-minS)/h)-1  ! Number of space steps (nodes)
 
     ! Define all of the input and output variables
     real :: r                       ! Find the stability of the scheme... also known as the CFL number
     real :: t                       ! The value of the current time step
-    real :: Res                     ! TVD R-K variable
-    real :: Res1                    ! TVD R-K variable
-    real :: Res_mat(0:smax+1)       ! TVD R-K variable
-    real :: u_1                     ! TVD R-K variable
-    real :: FD_mat(0:smax+1)        ! Array of final temperature values
-    real :: FD_mat500(0:smax+1)     ! Array of temperature values at t = 0.5
-    real :: FD_mat1500(0:smax+1)    ! Array of temperature values at t = 1.0
-    real :: S_mat(0:smax+1)         ! Array of temporary spatial values
+    real :: ResP                    ! TVD R-K variable (pressure)
+    real :: ResU                    ! TVD R-K variable (velocity)
+    real :: ResP1                   ! TVD R-K variable (pressure)
+    real :: ResU1                   ! TVD R-K variable (velocity)
+    real :: ResP_mat(0:smax+1)      ! TVD R-K variable (pressure)
+    real :: ResU_mat(0:smax+1)      ! TVD R-K variable (velocity)
+    real :: uP_1                    ! TVD R-K variable (pressure)
+    real :: uU_1                    ! TVD R-K variable (velocity)
+    real :: P_mat(0:smax+1)         ! Array of final pressure values
+    real :: P_mat500(0:smax+1)      ! Array of pressure values at t = 0.5
+    real :: P_mat1500(0:smax+1)     ! Array of pressure values at t = 1.0
+    real :: U_mat(0:smax+1)         ! Array of final velocity values
+    real :: U_mat500(0:smax+1)      ! Array of velocity values at t = 0.5
+    real :: U_mat1500(0:smax+1)     ! Array of velocity values at t = 1.0
+    real :: SP_mat(0:smax+1)        ! Array of temporary pressure spatial values
+    real :: SU_mat(0:smax+1)        ! Array of temporary velocity spatial values
     real :: x_mat(0:smax+1)         ! Array of x values
     integer :: i                    ! Variable to be looped in do loop
     integer :: j                    ! Variable to be looped in do loop
@@ -40,27 +47,26 @@ program plotting
 
     !!! Start the main code !!!
 
-    ! Determine the stability where r < 1/2 is stable (also lambda)
-    r = (alpha*k)/(h**2)
-
     ! Create an array for the initial condition
     x_mat(0) = minS
-    S_mat(0) = (0.5)*(TminS+F(scheme,minS))
+    SP_mat(0) = P_Bound("min")!(0.5)*(TminS+F(scheme,minS))
+    SU_mat(0) = U_Bound("min")!(0.5)*(TminS+F(scheme,minS))
 
     do i = 1,smax
         current_val = x_mat(i-1)+h
         x_mat(i) = current_val
         !print*,"Current: ",F(scheme,current_val)
-        S_mat(i) = F(scheme,current_val)
+        SP_mat(i) = P0(current_val)
+        SU_mat(i) = U0(current_val)
     end do
-    if (scheme == "13") then
-        S_mat(smax+1) = (0.5)*(S_mat(smax)+F(scheme,maxS))
-    else
-        S_mat(smax+1) = (0.5)*(TmaxS(scheme,0.0)+F(scheme,maxS))
-    end if
+
     x_mat(smax+1) = maxS
+    SP_mat(smax+1) = P_Bound("max")!0.5)*(TmaxS(scheme,0.0)+F(scheme,maxS))
+    SU_mat(smax+1) = U_Bound("max")!0.5)*(TmaxS(scheme,0.0)+F(scheme,maxS))
+
     do i = 0,smax+1
-        Res_mat(i) = S_mat(i)
+        ResP_mat(i) = SP_mat(i)
+        ResU_mat(i) = SU_mat(i)
         !print*,Res_mat(i)
     end do
 
@@ -72,26 +78,33 @@ program plotting
         ! Two-stage TVD Runge-Kutta
         print*,"Two-stage TVD Runge-Kutta"
         do j = 1,smax
-            Res1 = (alpha/(h**2))*(Res_mat(j+1)-2*Res_mat(j)+Res_mat(j-1))+S(scheme,x_mat(j))
-            Res = (alpha/(h**2))*(S_mat(j+1)-2*S_mat(j)+S_mat(j-1))+S(scheme,x_mat(j))
-            u_1 = S_mat(j)+k*Res
-            FD_mat(j) = (0.5)*(S_mat(j)+u_1)!+k*Res1)
+            !ResP1 = (alpha/(h**2))*(ResP_mat(j+1)-2*ResP_mat(j)+ResP_mat(j-1))+S(scheme,x_mat(j))
+            ResP = -rho*(c**2)*( (1/h)*(SP_mat(j)-SP_mat(j-1)) )!Pressure:-rho*(c**2)*(du/dx) BDM
+            uP_1 = SP_mat(j)+k*ResP
+            P_mat(j) = (0.5)*(SP_mat(j)+uP_1)!+k*ResP1)
+
+            !ResU1 = (alpha/(h**2))*(ResU_mat(j+1)-2*ResU_mat(j)+ResU_mat(j-1))+S(scheme,x_mat(j))
+            ResU = -(1/rho)*( (1/h)*(SU_mat(j)-SU_mat(j-1)) )!Velocity:-(1/rho)*(dp/dx) BDM
+            uU_1 = SU_mat(j)+k*ResU
+            U_mat(j) = (0.5)*(SU_mat(j)+uU_1)!+k*ResU1)
         end do
 
-        FD_mat(0) = TminS
-        if (scheme == "13") then
-            FD_mat(smax+1) = FD_mat(smax)
-        else
-            FD_mat(smax+1) = TmaxS(scheme,t_val)
-        end if
+        P_mat(0) = P_Bound("min")
+        P_mat(smax+1) = P_Bound("max")
+
+        U_mat(0) = U_Bound("max")
+        U_mat(smax+1) = U_Bound("max")
 
         do z = 0,smax+1
-            S_mat(z) = FD_mat(z)
+            SP_mat(z) = P_mat(z)
+            SU_mat(z) = U_mat(z)
             if (t_val == 0.5) then
-                FD_mat500(z) = FD_mat(z)
+                P_mat500(z) = P_mat(z)
+                U_mat500(z) = U_mat(z)
             end if
             if (t_val == 1.0) then
-                FD_mat1500(z) = FD_mat(z)
+                P_mat1500(z) = P_mat(z)
+                U_mat1500(z) = U_mat(z)
             end if
         end do
 
@@ -101,16 +114,17 @@ program plotting
     open(unit=48, file='Project2_U.dat')
     do i = 0,smax+1
         current_val = x_mat(i)
-        print*,"(",current_val,",",F(scheme,current_val),",",FD_mat(i),")"
-        write(48,*) current_val,F(scheme,current_val),FD_mat500(i),FD_mat1500(i),FD_mat(i)
+        print*,"(",current_val,",",P0(current_val),",",P_mat(i),",",U0(current_val),",",U_mat(i),")"
+        write(48,*) current_val,P0(current_val),P_mat500(i),P_mat1500(i),P_mat(i),U0(current_val),U_mat500(i),U_mat1500(i),U_mat(i)
     end do
     close(48)
+
 	! I am plotting with Gnuplot so this calls that program for plotting... must have the file named that for it to work
     call system('gnuplot -p Project2_U.plt')
 
 	! Sanity check to see if everything is working right through resolution and stability
     print*,"Time steps: ",tmax,"Space steps: ",smax
-    print*,"Stability is: ",r
+    !print*,"Stability is: ",r
 
     ! Import all of the required outside functions...
 
@@ -121,8 +135,8 @@ contains
 
         implicit none
 
-        character (len = 3), intent(in) :: edge   ! Input = define which scheme to use
-        real :: v                                  ! Output = the temperature at the max x-bound
+        character (len = 3), intent(in) :: edge     ! Input = define which scheme to use
+        real :: v                                   ! Output = the temperature at the max x-bound
 
         if (edge == "min") then
             v = 0
@@ -137,8 +151,8 @@ contains
 
         implicit none
 
-        character (len = 3), intent(in) :: edge   ! Input = define which scheme to use
-        real :: v                                  ! Output = the temperature at the max x-bound
+        character (len = 3), intent(in) :: edge     ! Input = define which scheme to use
+        real :: v                                   ! Output = the temperature at the max x-bound
 
         if (edge == "min") then
             v = 0
@@ -149,7 +163,7 @@ contains
     end function U_Bound
 
     ! Initial fluid pressure at t = 0
-    function P(x) result(y)
+    function P0(x) result(y)
 
         implicit none
 
@@ -158,10 +172,10 @@ contains
 
         y = exp(-(x**2))
 
-    end function P
+    end function P0
 
     ! Initial fluid velocity at t = 0
-    function U(x) result(y)
+    function U0(x) result(y)
 
         implicit none
 
@@ -170,6 +184,6 @@ contains
 
         y = (0.5)*exp((-2)*(x**2))
 
-    end function U
+    end function U0
 
 end program plotting

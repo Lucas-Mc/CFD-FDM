@@ -1,21 +1,32 @@
-set title "Project1 - Question 2, Crank-Nicolson (dx = 0.025,dt = 0.00025)"
+set title "Project2 - Undergraduate"
 # Forward Euler
 # Two-Stage TVD Runge-Kutta
 # Backward Euler
 # Crank-Nicolson
 set xlabel "Spatial Position (x)"
 set ylabel "Function Value (y)"
-set xrange [-1:1]
-set yrange [0:8]
+set xrange [-4:4]
+set yrange [0:1]
 
-set key right top
 set grid
 set mouse
 
 colors = "#E50000 #98043F #4C087F #000DBF"
-file_name = "Project1_22.dat"
+file_name = "Project2_U.dat"
 
 set terminal png size 960,470
-set output 'Project1_22.png'
+set output 'Project2_U.png'
 
-plot file_name using 1:2 with lines lc rgb word(colors,1) title '0.0 sec',file_name using 1:3 with lines lc rgb word(colors,2) title '0.5 sec',file_name using 1:4 with lines lc rgb word(colors,3) title '1.0 sec',file_name using 1:5 with lines lc rgb word(colors,4) title '1.5 sec'
+set multiplot layout 1,2 rowsfirst
+
+set key right top
+set title "Pressure"
+plot file_name using 1:2 with lines lc rgb word(colors,1) title '0.0 sec',file_name using 1:3 with lines lc rgb word(colors,2) title '0.5 sec',file_name using 1:4 with lines lc rgb word(colors,3) title '1.0 sec',file_name using 1:5 with lines lc rgb word(colors,4) title '2.0 sec'
+unset key
+
+set key right top
+set title "Velocity"
+plot file_name using 1:6 with lines lc rgb word(colors,1) title '0.0 sec',file_name using 1:7 with lines lc rgb word(colors,2) title '0.5 sec',file_name using 1:8 with lines lc rgb word(colors,3) title '1.0 sec',file_name using 1:9 with lines lc rgb word(colors,4) title '2.0 sec'
+unset key
+
+unset multiplot
