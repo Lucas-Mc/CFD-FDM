@@ -14,8 +14,9 @@ program plotting
     real, parameter :: maxS = 8.0                   ! Space end point
     real, parameter :: minT = 0.0                   ! Time start point
     real, parameter :: maxT = 2.0                   ! Time end point
-    real, parameter :: h = 0.025                    ! Space step
-    real, parameter :: k = 0.00025                 	! Time step
+    real, parameter :: intervals = 800              ! Number of intervals (mesh size)
+    real, parameter :: h = (maxS-minS)/intervals    ! Space step
+    real, parameter :: k = (maxT-minT)/intervals   	! Time step
     integer, parameter :: tmax = (maxT-minT)/k      ! Number of time steps
     integer, parameter :: smax = ((maxS-minS)/h)-1  ! Number of space steps (nodes)
 
@@ -78,15 +79,50 @@ program plotting
         ! Two-stage TVD Runge-Kutta
         print*,"Two-stage TVD Runge-Kutta"
         do j = 1,smax
-            !ResP1 = (alpha/(h**2))*(ResP_mat(j+1)-2*ResP_mat(j)+ResP_mat(j-1))+S(scheme,x_mat(j))
-            ResP = -rho*(c**2)*( (1/h)*(SP_mat(j)-SP_mat(j-1)) )!Pressure:-rho*(c**2)*(du/dx) BDM
-            uP_1 = SP_mat(j)+k*ResP
-            P_mat(j) = (0.5)*(SP_mat(j)+uP_1)!+k*ResP1)
+            !ResP1 = -rho*(c**2)*( (1/h)*(ResP_mat(j)-ResP_mat(j-1)) )
+            !ResP = -rho*(c**2)*( (1/h)*(SP_mat(j)-SP_mat(j-1)) )!Pressure (dp/dt):-rho*(c**2)*(du/dx) BDM
+            !uP_1 = SP_mat(j)+k*ResP
+            !P_mat(j) = (0.5)*(SP_mat(j)+uP_1+k*ResP1)
 
-            !ResU1 = (alpha/(h**2))*(ResU_mat(j+1)-2*ResU_mat(j)+ResU_mat(j-1))+S(scheme,x_mat(j))
-            ResU = -(1/rho)*( (1/h)*(SU_mat(j)-SU_mat(j-1)) )!Velocity:-(1/rho)*(dp/dx) BDM
+            !ResU1 = -(1/rho)*( (1/h)*(ResU_mat(j)-ResU_mat(j-1)) )
+            !ResU = -(1/rho)*( (1/h)*(SU_mat(j)-SU_mat(j-1)) )!Velocity (du/dt):-(1/rho)*(dp/dx) BDM
+            !uU_1 = SU_mat(j)+k*ResU
+            !U_mat(j) = (0.5)*(SU_mat(j)+uU_1+k*ResU1)
+
+            !-rho*(c**2)*( (1/h)*(SU_mat(j)-SU_mat(j-1)) )!Pressure (dp/dt):-rho*(c**2)*(du/dx) BDM
+            !-(1/rho)*( (1/h)*(SP_mat(j)-SP_mat(j-1)) )!Velocity (du/dt):-(1/rho)*(dp/dx) BDM
+
+            ! First-Order
+            if ((j == 1) .or. (j == smax)) then
+                ResP = -1*( (0.5/h)*( (SP_mat(j)+SU_mat(j))-(SP_mat(j-1)+SU_mat(j-1)) ) &
+                    + (0.5/h)*( (-SP_mat(j+1)+SU_mat(j+1))-(-SP_mat(j)+SU_mat(j)) ) )
+                ResU = -1*( (0.5/h)*( (SP_mat(j)+SU_mat(j))-(SP_mat(j-1)+SU_mat(j-1)) ) &
+                    + (0.5/h)*( (SP_mat(j+1)-SU_mat(j+1))-(SP_mat(j)-SU_mat(j)) ) )
+
+                !ResP1 = ResP
+                !ResU1 = ResU
+            else
+                ! Second-Order
+                ResP = -1*( (0.5/h)*( 3*(SP_mat(j)+SU_mat(j))-4*(SP_mat(j-1)+SU_mat(j-1))+1*(SP_mat(j-2)+SU_mat(j-2)) ) &
+                    + (0.5/h)*( -1*(-SP_mat(j+2)+SU_mat(j+2))+4*(-SP_mat(j+1)+SU_mat(j+1))-3*(-SP_mat(j)+SU_mat(j)) ) )
+                ResU = -1*( (0.5/h)*( 3*(SP_mat(j)+SU_mat(j))-4*(SP_mat(j-1)+SU_mat(j-1))+1*(SP_mat(j-2)+SU_mat(j-2)) ) &
+                    + (0.5/h)*( -1*(SP_mat(j+2)-SU_mat(j+2))+4*(SP_mat(j+1)-SU_mat(j+1))-3*(SP_mat(j)-SU_mat(j)) ) )
+
+                !ResP1 = ResP
+                !ResU1 = ResU
+            end if
+
+            uP_1 = SP_mat(j)+k*ResP
             uU_1 = SU_mat(j)+k*ResU
-            U_mat(j) = (0.5)*(SU_mat(j)+uU_1)!+k*ResU1)
+
+            !-rho*(c**2)*( (1/h)*(SU_mat(j)-SU_mat(j-1)) )
+            !-(1/rho)*( (1/h)*(SP_mat(j)-SP_mat(j-1)) )
+
+            ResP1 = ResP
+            ResU1 = ResU
+
+            P_mat(j) = (0.5)*(SP_mat(j)+uP_1+k*ResP1)
+            U_mat(j) = (0.5)*(SU_mat(j)+uU_1+k*ResU1)
         end do
 
         P_mat(0) = P_Bound("min")
@@ -111,7 +147,7 @@ program plotting
     end do
 
 	! Export the corresponding data to a '.dat' file for future plotting
-    open(unit=48, file='Project2_U.dat')
+    open(unit=48, file='Project2_Ut_test.dat')
     do i = 0,smax+1
         current_val = x_mat(i)
         print*,"(",current_val,",",P0(current_val),",",P_mat(i),",",U0(current_val),",",U_mat(i),")"
