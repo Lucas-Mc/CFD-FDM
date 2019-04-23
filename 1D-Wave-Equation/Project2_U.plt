@@ -6,16 +6,16 @@ set title "Project2 - Undergraduate"
 set xlabel "Spatial Position (x)"
 set ylabel "Function Value (y)"
 set xrange [-8:8]
-set yrange [0:2]
+set yrange [-0.5:1]
 
 set grid
 set mouse
 
 colors = "#E50000 #98043F #4C087F #000DBF"
-file_name = "Project2_Ut_test.dat"
+file_name = "Project2_Ut_800.dat"
 
 set terminal png size 960,470
-set output 'Project2_Ut_test.png'
+set output 'Project2_Ut_800t.png'
 
 set multiplot layout 1,2 rowsfirst
 

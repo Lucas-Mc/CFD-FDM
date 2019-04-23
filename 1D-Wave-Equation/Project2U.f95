@@ -118,8 +118,8 @@ program plotting
             !-rho*(c**2)*( (1/h)*(SU_mat(j)-SU_mat(j-1)) )
             !-(1/rho)*( (1/h)*(SP_mat(j)-SP_mat(j-1)) )
 
-            ResP1 = ResP
-            ResU1 = ResU
+            ResP1 = 0!ResP
+            ResU1 = 0!ResU
 
             P_mat(j) = (0.5)*(SP_mat(j)+uP_1+k*ResP1)
             U_mat(j) = (0.5)*(SU_mat(j)+uU_1+k*ResU1)
